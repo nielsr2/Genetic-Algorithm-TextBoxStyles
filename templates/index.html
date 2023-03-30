@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Style Genetic Algorithm</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto|Lato|Oswald|Open+Sans|Raleway|Montserrat&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <style>
+        body {
+            background-color: gray;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .text-sample {
+            width: 200px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Text Style Genetic Algorithm</h1>
+    <div class="container" id="population"></div>
+    <label for="minMutationRate">Mutation Rate:</label>
+    <input type="number" id="minMutationRate" value="0.1" step="0.01" min="0" max="1">
+
+    <label for="toggleCrossover">Crossover:</label>
+    <input type="checkbox" id="toggleCrossover" checked>
+
+    <button onclick="evolve()">Evolve</button>
+    <script>
+        let selectedParents = [];
+
+        async function fetchPopulation(url) {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data;
+        }
+
+        async function generatePopulation() {
+            const population = await fetchPopulation('/generate');
+            displayPopulation(population);
+        }
+
+        function displayPopulation(population) {
+            const container = document.getElementById('population');
+            container.innerHTML = '';
+
+            population.forEach((individual, index) => {
+                const div = document.createElement('div');
+                div.className = `text-sample animate__animated animate__${individual.animation} animate__infinite`;
+                div.style.fontFamily = individual.font;
+                div.style.fontSize = individual.size + 'px';
+                div.style.color = individual.color;
+                div.style.backgroundColor = individual.highlight;
+                div.style.fontStyle = individual.italics ? 'italic' : 'normal';
+                div.style.letterSpacing = individual.letterSpacing + 'px';
+
+
+                div.innerHTML = `Sample Text ${index + 1}`;
+                div.onclick = () => {
+                    const selectedIndex = selectedParents.findIndex(parent => JSON.stringify(parent) === JSON.stringify(individual));
+
+                    if (selectedIndex >= 0) {
+                        // Deselect the parent
+                        div.style.border = '1px solid #ccc';
+                        selectedParents.splice(selectedIndex, 1);
+                    } else {
+                        // Select the parent if less than 2 parents are already selected
+                        if (selectedParents.length < 2) {
+                            div.style.border = '3px solid blue';
+                            selectedParents.push(individual);
+                        }
+                    }
+                };
+
+                container.appendChild(div);
+            });
+        }
+
+        async function evolve() {
+            if (selectedParents.length !== 2) {
+                alert('Please select two parents');
+                return;
+            }
+
+            const minMutationRate = parseFloat(document.getElementById('minMutationRate').value);
+
+            const toggleCrossover = document.getElementById('toggleCrossover').checked;
+
+
+            const response = await fetch('/evolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ population: selectedParents, minMutationRate,toggleCrossover }),
+            });
+            const newPopulation = await response.json();
+            displayPopulation(newPopulation);
+            selectedParents = [];
+        }
+        generatePopulation();
+    </script>
+</body>
+
+</html>
